@@ -1,6 +1,6 @@
-
 // Replace with your deployed backend URL
 const BACKEND_URL = "https://attendance-backend-pa84.onrender.com";
+
 
 // ===========================
 // STUDENT LOGIN + MARK ATTENDANCE
@@ -10,9 +10,15 @@ function verifyStudent(){
     let username = document.getElementById("username").value
     let password = document.getElementById("password").value
 
+    // get session + token from QR link
     let params = new URLSearchParams(window.location.search)
     let session = params.get("session")
     let token = params.get("token")
+
+    if(!token){
+        alert("Invalid QR Code")
+        return
+    }
 
     fetch(`${BACKEND_URL}/student_login`,{
         method:"POST",
@@ -45,6 +51,9 @@ function verifyStudent(){
 
                 else if(result.status==="qr_expired")
                     alert("QR Code Expired. Please scan again.")
+
+                else if(result.status==="invalid_qr")
+                    alert("Invalid QR Code. Please scan again.")
 
                 else
                     alert(result.message || "Error marking attendance")
@@ -151,7 +160,8 @@ function loadQR(){
     let qr = document.getElementById("qr")
 
     if(qr){
-        qr.src = `${BACKEND_URL}/generate_qr?time=${Date.now()}`
+        // Date.now() prevents browser caching
+        qr.src = `${BACKEND_URL}/generate_qr?t=${Date.now()}`
     }
 }
 
