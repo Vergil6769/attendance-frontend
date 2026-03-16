@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Face Verification</title>
+<title>Student Face Verification</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -19,18 +19,26 @@
 <!-- Face Verification Section -->
 <div id="face-section" style="display:none;">
     <h3>Face Verification</h3>
-    <video id="camera" width="320" height="240" autoplay></video>
+    <video id="camera" width="320" height="240" autoplay muted></video>
     <button id="capture-btn">Capture Angle</button>
     <p id="angle-info">Angle: Front</p>
     <p id="timer">Timer: 10s</p>
 </div>
 
-<!-- Redirect to QR Scan -->
+<!-- QR Scan Section -->
 <div id="qr-section" style="display:none;">
     <h3>Scan QR Code</h3>
-    <video id="qr-camera" width="320" height="240" autoplay></video>
+    <video id="qr-camera" width="320" height="240" autoplay muted></video>
 </div>
 
-<script src="js/face_capture.js"></script>
+<!-- ===========================
+     Scripts
+=========================== -->
+<!-- Face-api.js CDN -->
+<script defer src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
+
+<!-- Your face_capture.js -->
+<script defer src="js/face_capture.js"></script>
+
 </body>
 </html>
