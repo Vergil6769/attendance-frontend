@@ -82,13 +82,10 @@ function loadQR() {
         .then(data => {
             const qr = document.getElementById("qr");
             if (qr && data.token) {
-                // Generate QR image dynamically using a public API
                 qr.src = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" + data.token;
             }
         })
-        .catch(err => {
-            console.log(err);
-        });
+        .catch(err => console.log(err));
 }
 
 // ===========================
@@ -103,9 +100,73 @@ function stopAttendance() {
     const lectureName = document.getElementById("lecture_name");
     if (lectureName) lectureName.innerText = "";
 
-    if (window.qrInterval) {
-        clearInterval(window.qrInterval);
+    if (window.qrInterval) clearInterval(window.qrInterval);
+}
+
+// ===========================
+// STUDENT LOGIN + FACE VERIFICATION + MARK ATTENDANCE
+// ===========================
+async function verifyAndMarkAttendance() {
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
+
+    // Get QR params from URL
+    const params = new URLSearchParams(window.location.search);
+    const session = params.get("session");
+    const token = params.get("token");
+
+    if (!token) { alert("Invalid QR Code"); return; }
+
+    // --- Step 1: Student Login ---
+    let loginRes = await fetch(`${BACKEND_URL}/student_login`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ username, password })
+    });
+    let loginData = await loginRes.json();
+
+    if (loginData.status !== "success") {
+        alert("Invalid Student ID or Password");
+        return;
     }
+
+    // --- Step 2: Capture webcam image (front camera) ---
+    const imageBase64 = await captureWebcamImage(); // implement this function to get base64 from webcam
+    if (!imageBase64) {
+        alert("Could not capture image");
+        return;
+    }
+
+    // --- Step 3: Face Verification ---
+    let verifyRes = await fetch(`${BACKEND_URL}/verify_face`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ username, angle: "front", image: imageBase64 })
+    });
+    let verifyData = await verifyRes.json();
+
+    if (!verifyData.match) {
+        alert("Face verification failed. Try again.");
+        return;
+    }
+
+    // --- Step 4: Mark Attendance ---
+    let markRes = await fetch(`${BACKEND_URL}/mark_attendance`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            username: username,
+            name: loginData.name,
+            roll: loginData.roll,
+            division: loginData.division,
+            session: session,
+            token: token
+        })
+    });
+    let markData = await markRes.json();
+
+    if (markData.status === "present") alert("Attendance marked successfully");
+    else alert(markData.status || "Error marking attendance");
 }
 
 // ===========================
@@ -155,3 +216,27 @@ window.onload = function () {
         window.location = "index.html";
     }
 };
+
+// ===========================
+// HELPER: CAPTURE WEBCAM IMAGE
+// ===========================
+function captureWebcamImage() {
+    return new Promise((resolve, reject) => {
+        const video = document.createElement("video");
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+                video.play();
+
+                setTimeout(() => {
+                    const canvas = document.createElement("canvas");
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+                    stream.getTracks().forEach(track => track.stop());
+                    resolve(canvas.toDataURL("image/jpeg"));
+                }, 1500); // wait 1.5s to allow camera to load
+            })
+            .catch(err => reject(err));
+    });
+}
