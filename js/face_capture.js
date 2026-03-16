@@ -1,8 +1,15 @@
+// ============================
+// face_capture.js
+// ============================
+
 const BACKEND_URL = "https://attendance-backend-pa84.onrender.com";
 
 let username = "";
 let faceVerified = false;
 
+// ---------------------------
+// DOM ELEMENTS
+// ---------------------------
 const loginBtn = document.getElementById("login-btn");
 const faceSection = document.getElementById("face-section");
 const qrSection = document.getElementById("qr-section");
@@ -33,20 +40,29 @@ loginBtn.addEventListener("click", async () => {
     username = document.getElementById("username").value;
     const password = document.getElementById("password").value;
 
-    const res = await fetch(`${BACKEND_URL}/student_login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password })
-    });
+    if (!username || !password) {
+        alert("Enter username and password");
+        return;
+    }
 
-    const data = await res.json();
+    try {
+        const res = await fetch(`${BACKEND_URL}/student_login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
 
-    if (data.status === "success") {
-        document.getElementById("login-section").style.display = "none";
-        faceSection.style.display = "block";
-        startCamera();
-    } else {
-        alert("Login failed");
+        if (data.status === "success") {
+            document.getElementById("login-section").style.display = "none";
+            faceSection.style.display = "block";
+            startCamera();
+        } else {
+            alert("Login failed");
+        }
+    } catch (err) {
+        console.error(err);
+        alert("Error connecting to backend");
     }
 });
 
@@ -57,7 +73,11 @@ function startCamera() {
     navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
         .then(stream => {
             camera.srcObject = stream;
-            camera.addEventListener('loadedmetadata', () => camera.play());
+            camera.addEventListener('loadedmetadata', () => {
+                camera.width = camera.videoWidth;
+                camera.height = camera.videoHeight;
+                camera.play();
+            });
         })
         .catch(() => alert("Camera permission denied"));
 }
@@ -83,47 +103,56 @@ captureBtn.addEventListener("click", async () => {
         return;
     }
 
+    // Set canvas size
+    faceCanvas.width = camera.videoWidth;
+    faceCanvas.height = camera.videoHeight;
+
     // Draw detection box
-    const displaySize = { width: camera.width, height: camera.height };
+    const displaySize = { width: faceCanvas.width, height: faceCanvas.height };
     faceapi.matchDimensions(faceCanvas, displaySize);
     const resized = faceapi.resizeResults(detection, displaySize);
+
     faceCanvas.getContext('2d').clearRect(0, 0, faceCanvas.width, faceCanvas.height);
     faceapi.draw.drawDetections(faceCanvas, resized);
     faceapi.draw.drawFaceLandmarks(faceCanvas, resized);
 
     const descriptor = Array.from(detection.descriptor);
 
-    const res = await fetch(`${BACKEND_URL}/verify_face`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, encoding: descriptor })
-    });
+    try {
+        const res = await fetch(`${BACKEND_URL}/verify_face`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, encoding: descriptor })
+        });
+        const data = await res.json();
 
-    const data = await res.json();
-
-    if (data.match) {
-        faceVerified = true;
-        alert("Face verified!");
-        startTimer();
-        startQRScan();
-    } else {
-        alert("Face verification failed. Try again.");
+        if (data.match) {
+            faceVerified = true;
+            alert("Face verified!");
+            startTimer(10, () => startQRScan()); // start QR scan after 10s timer
+        } else {
+            alert("Face verification failed. Try again.");
+        }
+    } catch (err) {
+        console.error(err);
+        alert("Error verifying face");
     }
 });
 
 // ---------------------------
-// TIMER (10 sec)
+// TIMER FUNCTION
 // ---------------------------
-function startTimer() {
-    let time = 10;
+function startTimer(seconds, callback) {
+    let time = seconds;
     timerDisplay.innerText = "Timer: " + time + "s";
+
     const interval = setInterval(() => {
         time--;
         timerDisplay.innerText = "Timer: " + time + "s";
+
         if (time <= 0) {
             clearInterval(interval);
-            faceVerified = false;
-            alert("Face verification expired");
+            if (callback) callback();
         }
     }, 1000);
 }
@@ -138,12 +167,18 @@ function startQRScan() {
     navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
         .then(stream => {
             qrCamera.srcObject = stream;
-            scanQR();
-        });
+            qrCamera.addEventListener('loadedmetadata', () => {
+                qrCamera.width = qrCamera.videoWidth;
+                qrCamera.height = qrCamera.videoHeight;
+                qrCamera.play();
+                scanQR();
+            });
+        })
+        .catch(() => alert("Back camera permission denied"));
 }
 
 // ---------------------------
-// QR SCAN
+// QR SCAN FUNCTION
 // ---------------------------
 function scanQR() {
     const canvas = document.createElement("canvas");
@@ -155,7 +190,7 @@ function scanQR() {
         canvas.width = qrCamera.videoWidth;
         canvas.height = qrCamera.videoHeight;
 
-        ctx.drawImage(qrCamera, 0, 0);
+        ctx.drawImage(qrCamera, 0, 0, canvas.width, canvas.height);
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const code = jsQR(imageData.data, canvas.width, canvas.height);
 
@@ -179,12 +214,16 @@ async function markAttendance(session, token) {
         return;
     }
 
-    const res = await fetch(`${BACKEND_URL}/mark_attendance`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, session, token })
-    });
-
-    const data = await res.json();
-    alert(data.status);
+    try {
+        const res = await fetch(`${BACKEND_URL}/mark_attendance`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, session, token })
+        });
+        const data = await res.json();
+        alert(data.status);
+    } catch (err) {
+        console.error(err);
+        alert("Error marking attendance");
+    }
 }
