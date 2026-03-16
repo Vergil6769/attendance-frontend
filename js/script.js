@@ -75,7 +75,7 @@ function startAttendance() {
 
             loadQR();
 
-            // rotate QR every 4 seconds
+            // rotate QR every 9 seconds
             window.qrInterval = setInterval(loadQR, 9000);
 
         }

@@ -6,7 +6,6 @@ let roll = "";
 let division = "";
 
 let faceVerified = false;
-let faceTimer = null;
 
 const loginBtn = document.getElementById("login-btn");
 const faceSection = document.getElementById("face-section");
@@ -15,22 +14,29 @@ const qrSection = document.getElementById("qr-section");
 const camera = document.getElementById("camera");
 const captureBtn = document.getElementById("capture-btn");
 
-const timerDisplay = document.getElementById("timer");
 const qrCamera = document.getElementById("qr-camera");
 
+const timerDisplay = document.getElementById("timer");
+
+
+// LOAD FACE MODELS
 
 async function loadModels(){
 
-    await faceapi.nets.tinyFaceDetector.loadFromUri("./models");
-    await faceapi.nets.faceLandmark68Net.loadFromUri("./models");
-    await faceapi.nets.faceRecognitionNet.loadFromUri("./models");
+    const MODEL_URL = "https://vergil6769.github.io/attendance-frontend/models";
+
+    await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+    await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+    await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+
+    console.log("Face models loaded");
 
 }
 
-loadModels().then(()=>{
-    console.log("Face models loaded");
-});
+loadModels();
 
+
+// LOGIN
 
 loginBtn.addEventListener("click", async ()=>{
 
@@ -41,7 +47,7 @@ loginBtn.addEventListener("click", async ()=>{
 
         method:"POST",
         headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({username,password})
+        body:JSON.stringify({username,password})
 
     });
 
@@ -58,7 +64,9 @@ loginBtn.addEventListener("click", async ()=>{
 
         startCamera();
 
-    }else{
+    }
+
+    else{
 
         alert("Login failed");
 
@@ -67,165 +75,214 @@ loginBtn.addEventListener("click", async ()=>{
 });
 
 
+// FRONT CAMERA
+
 function startCamera(){
 
-    navigator.mediaDevices.getUserMedia({video:{facingMode:"user"}})
+navigator.mediaDevices.getUserMedia({video:{facingMode:"user"}})
 
-    .then(stream=>{
+.then(stream=>{
 
-        camera.srcObject=stream;
+camera.srcObject=stream;
 
-    })
+})
 
-    .catch(err=>{
+.catch(()=>{
 
-        console.log(err);
-        alert("Camera denied");
+alert("Camera permission denied");
 
-    });
+});
 
 }
 
+
+// FACE VERIFY
 
 captureBtn.addEventListener("click",verifyFace);
 
 async function verifyFace(){
 
-    const detection=await faceapi
-    .detectSingleFace(camera,new faceapi.TinyFaceDetectorOptions())
-    .withFaceLandmarks()
-    .withFaceDescriptor();
+const detection=await faceapi
+.detectSingleFace(camera,new faceapi.TinyFaceDetectorOptions())
+.withFaceLandmarks()
+.withFaceDescriptor();
 
-    if(!detection){
+if(!detection){
 
-        alert("No face detected");
-        return;
+alert("No face detected");
+return;
 
-    }
+}
 
-    const descriptor=Array.from(detection.descriptor);
+const descriptor=Array.from(detection.descriptor);
 
-    const res=await fetch(`${BACKEND_URL}/verify_face`,{
+const res=await fetch(`${BACKEND_URL}/verify_face`,{
 
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({
+method:"POST",
 
-            username:username,
-            encoding:descriptor
+headers:{"Content-Type":"application/json"},
 
-        })
+body:JSON.stringify({
 
-    });
+username:username,
+encoding:descriptor
 
-    const data=await res.json();
+})
 
-    if(data.match){
+});
 
-        faceVerified=true;
+const data=await res.json();
 
-        alert("Face verified");
+if(data.match){
 
-        startFaceTimer();
-        startQRScan();
+faceVerified=true;
 
-    }else{
+alert("Face verified");
 
-        alert("Face verification failed");
+startTimer();
 
-    }
+startQRScan();
+
+}
+
+else{
+
+alert("Face verification failed");
+
+}
 
 }
 
 
-function startFaceTimer(){
+// TIMER
 
-    let time=10;
+function startTimer(){
 
-    timerDisplay.innerText="Timer: "+time+"s";
+let time=10;
 
-    faceTimer=setInterval(()=>{
+timerDisplay.innerText="Timer: "+time+"s";
 
-        time--;
+const interval=setInterval(()=>{
 
-        timerDisplay.innerText="Timer: "+time+"s";
+time--;
 
-        if(time<=0){
+timerDisplay.innerText="Timer: "+time+"s";
 
-            clearInterval(faceTimer);
+if(time<=0){
 
-            faceVerified=false;
+clearInterval(interval);
 
-            fetch(`${BACKEND_URL}/reset_face_verification`,{
+faceVerified=false;
 
-                method:"POST",
-                headers:{"Content-Type":"application/json"},
-                body: JSON.stringify({username})
-
-            });
-
-            alert("Face verification expired");
-
-        }
-
-    },1000);
+alert("Face verification expired");
 
 }
 
+},1000);
+
+}
+
+
+// START QR CAMERA
 
 function startQRScan(){
 
-    faceSection.style.display="none";
-    qrSection.style.display="block";
+faceSection.style.display="none";
+qrSection.style.display="block";
 
-    navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}})
+navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}})
 
-    .then(stream=>{
+.then(stream=>{
 
-        qrCamera.srcObject=stream;
+qrCamera.srcObject=stream;
 
-    });
+scanQR();
 
-    const params=new URLSearchParams(window.location.search);
-
-    const session=params.get("session");
-    const token=params.get("token");
-
-    markAttendance(session,token);
+});
 
 }
 
 
+// QR SCAN
+
+function scanQR(){
+
+const canvas=document.createElement("canvas");
+const ctx=canvas.getContext("2d");
+
+setInterval(()=>{
+
+if(qrCamera.readyState!==qrCamera.HAVE_ENOUGH_DATA) return;
+
+canvas.width=qrCamera.videoWidth;
+canvas.height=qrCamera.videoHeight;
+
+ctx.drawImage(qrCamera,0,0);
+
+const imageData=ctx.getImageData(0,0,canvas.width,canvas.height);
+
+const code=jsQR(imageData.data,canvas.width,canvas.height);
+
+if(code){
+
+console.log("QR detected:",code.data);
+
+try{
+
+const qrData=JSON.parse(code.data);
+
+markAttendance(qrData.session,qrData.token);
+
+}
+
+catch{
+
+alert("Invalid QR code");
+
+}
+
+}
+
+},500);
+
+}
+
+
+// MARK ATTENDANCE
+
 async function markAttendance(session,token){
 
-    const res=await fetch(`${BACKEND_URL}/mark_attendance`,{
+const res=await fetch(`${BACKEND_URL}/mark_attendance`,{
 
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
+method:"POST",
 
-        body: JSON.stringify({
+headers:{"Content-Type":"application/json"},
 
-            username,
-            name,
-            roll,
-            division,
-            session,
-            token
+body:JSON.stringify({
 
-        })
+username,
+name,
+roll,
+division,
+session,
+token
 
-    });
+})
 
-    const data=await res.json();
+});
 
-    if(data.status==="present"){
+const data=await res.json();
 
-        alert("Attendance marked");
+if(data.status==="present"){
 
-    }else{
+alert("Attendance marked");
 
-        alert(data.status);
+}
 
-    }
+else{
+
+alert(data.status);
+
+}
 
 }

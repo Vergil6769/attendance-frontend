@@ -1,71 +1,61 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Student Face Verification</title>
+
+<title>Student Attendance</title>
+
 <link rel="stylesheet" href="css/style.css">
+
+<script defer src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/jsqr"></script>
+<script defer src="js/face_capture.js"></script>
+
 </head>
 
 <body>
 
-<h2>Student Face Verification</h2>
+<h2>Student Attendance</h2>
 
-<!-- =========================
-LOGIN
-========================= -->
+<!-- LOGIN -->
+
 <div id="login-section">
 
-    <input type="text" id="username" placeholder="Username">
-    <input type="password" id="password" placeholder="Password">
+<input id="username" placeholder="Username">
+<input id="password" type="password" placeholder="Password">
 
-    <button id="login-btn">Login</button>
+<button id="login-btn">Login</button>
 
 </div>
 
 
-<!-- =========================
-FACE VERIFICATION
-========================= -->
+<!-- FACE VERIFY -->
+
 <div id="face-section" style="display:none;">
 
-    <h3>Face Verification</h3>
+<h3>Face Verification</h3>
 
-    <video id="camera" width="320" height="240" autoplay muted playsinline></video>
+<video id="camera" width="400" autoplay muted></video>
 
-    <br><br>
+<br>
 
-    <button id="capture-btn">Verify Face</button>
+<button id="capture-btn">Verify Face</button>
 
-    <p id="angle-info">Please look straight at the camera</p>
-
-    <p id="timer"></p>
+<p id="timer"></p>
 
 </div>
 
 
-<!-- =========================
-QR SCAN
-========================= -->
+<!-- QR SCAN -->
+
 <div id="qr-section" style="display:none;">
 
-    <h3>Scan QR Code</h3>
+<h3>Scan QR Code</h3>
 
-    <video id="qr-camera" width="320" height="240" autoplay muted playsinline></video>
+<video id="qr-camera" width="400" autoplay muted></video>
 
 </div>
 
-
-<!-- =========================
-SCRIPTS
-========================= -->
-
-<!-- FaceAPI library -->
-<script src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
-
-<!-- Your JS -->
-<script src="js/face_capture.js"></script>
 
 </body>
 </html>
