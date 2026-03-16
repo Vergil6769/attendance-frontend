@@ -66,7 +66,6 @@ function startCamera() {
 // FACE VERIFICATION
 // ---------------------------
 captureBtn.addEventListener("click", async () => {
-
     if (camera.readyState !== camera.HAVE_ENOUGH_DATA) {
         alert("Camera not ready yet");
         return;
@@ -80,7 +79,7 @@ captureBtn.addEventListener("click", async () => {
         .withFaceDescriptor();
 
     if (!detection) {
-        alert("No face detected. Make sure your face is visible and well-lit.");
+        alert("No face detected. Make sure your face is fully visible and well-lit.");
         return;
     }
 
