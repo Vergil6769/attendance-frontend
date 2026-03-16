@@ -3,6 +3,7 @@
 // ===========================
 const BACKEND_URL = "https://attendance-backend-pa84.onrender.com";
 
+
 // ===========================
 // TEACHER LOGIN
 // ===========================
@@ -24,7 +25,8 @@ function teacherLogin() {
             localStorage.setItem("teacher", username);
             window.location = "teacher_dashboard.html";
 
-        } else {
+        } 
+        else {
 
             alert("Invalid Username or Password");
 
@@ -32,8 +34,10 @@ function teacherLogin() {
 
     })
     .catch(err => {
+
         console.log(err);
         alert("Server error");
+
     });
 
 }
@@ -71,7 +75,8 @@ function startAttendance() {
 
             loadQR();
 
-            window.qrInterval = setInterval(loadQR, 5000);
+            // rotate QR every 4 seconds
+            window.qrInterval = setInterval(loadQR, 4000);
 
         }
         else if (data.status === "no_lecture_today") {
@@ -97,7 +102,7 @@ function startAttendance() {
 
 
 // ===========================
-// LOAD QR (ROTATES EVERY 5 SEC)
+// LOAD QR (ROTATES)
 // ===========================
 function loadQR() {
 
@@ -109,9 +114,14 @@ function loadQR() {
 
         if (qr && data.token) {
 
+            const studentURL =
+                "https://vergil6769.github.io/attendance-frontend/faceverify.html"
+                + "?session=" + data.session
+                + "&token=" + data.token;
+
             qr.src =
-            "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data="
-            + data.token;
+                "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data="
+                + encodeURIComponent(studentURL);
 
         }
 
@@ -135,72 +145,6 @@ function stopAttendance() {
     if (lectureName) lectureName.innerText = "";
 
     if (window.qrInterval) clearInterval(window.qrInterval);
-
-}
-
-
-// ===========================
-// STUDENT LOGIN + FACE VERIFY
-// ===========================
-async function verifyAndMarkAttendance() {
-
-    const username = document.getElementById("username").value;
-    const password = document.getElementById("password").value;
-
-    // STEP 1 LOGIN
-    let loginRes = await fetch(`${BACKEND_URL}/student_login`, {
-
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ username, password })
-
-    });
-
-    let loginData = await loginRes.json();
-
-    if (loginData.status !== "success") {
-
-        alert("Invalid Student ID or Password");
-        return;
-
-    }
-
-
-    // STEP 2 CAPTURE IMAGE
-    let image = await captureWebcamImage();
-
-    if (!image) {
-
-        alert("Could not capture face");
-        return;
-
-    }
-
-
-    // STEP 3 FACE VERIFY
-    let verifyRes = await fetch(`${BACKEND_URL}/verify_face`, {
-
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-
-            username: username,
-            image: image
-
-        })
-
-    });
-
-    let verifyData = await verifyRes.json();
-
-    if (!verifyData.match) {
-
-        alert("Face verification failed");
-        return;
-
-    }
-
-    alert("Face Verified Successfully");
 
 }
 
@@ -254,7 +198,7 @@ function logout() {
 
 
 // ===========================
-// BLOCK DASHBOARD
+// BLOCK DASHBOARD ACCESS
 // ===========================
 window.onload = function () {
 
@@ -268,51 +212,3 @@ window.onload = function () {
     }
 
 };
-
-
-// ===========================
-// CAMERA CAPTURE
-// ===========================
-function captureWebcamImage() {
-
-    return new Promise(async (resolve, reject) => {
-
-        try {
-
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-
-            const video = document.createElement("video");
-
-            video.srcObject = stream;
-            video.play();
-
-            setTimeout(() => {
-
-                const canvas = document.createElement("canvas");
-
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-
-                const ctx = canvas.getContext("2d");
-
-                ctx.drawImage(video, 0, 0);
-
-                stream.getTracks().forEach(track => track.stop());
-
-                resolve(canvas.toDataURL("image/jpeg"));
-
-            }, 1200);
-
-        }
-        catch(err) {
-
-            console.log(err);
-            alert("Camera permission denied");
-
-            resolve(null);
-
-        }
-
-    });
-
-}

@@ -11,6 +11,7 @@ let faceTimer = null;
 
 const BACKEND_URL = "https://attendance-backend-pa84.onrender.com";
 
+
 // ===========================
 // ELEMENTS
 // ===========================
@@ -26,6 +27,22 @@ const qrCamera = document.getElementById("qr-camera");
 
 
 // ===========================
+// LOAD FACE-API MODELS
+// ===========================
+async function loadModels(){
+
+    await faceapi.nets.tinyFaceDetector.loadFromUri("/models");
+    await faceapi.nets.faceLandmark68Net.loadFromUri("/models");
+    await faceapi.nets.faceRecognitionNet.loadFromUri("/models");
+
+}
+
+loadModels().then(()=>{
+    console.log("Face models loaded");
+});
+
+
+// ===========================
 // STEP 1: STUDENT LOGIN
 // ===========================
 loginBtn.addEventListener("click", async () => {
@@ -33,19 +50,19 @@ loginBtn.addEventListener("click", async () => {
     username = document.getElementById("username").value;
     const password = document.getElementById("password").value;
 
-    try {
+    try{
 
-        const res = await fetch(`${BACKEND_URL}/student_login`, {
+        const res = await fetch(`${BACKEND_URL}/student_login`,{
 
-            method: "POST",
-            headers: {"Content-Type":"application/json"},
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
             body: JSON.stringify({username,password})
 
         });
 
         const data = await res.json();
 
-        if(data.status === "success") {
+        if(data.status === "success"){
 
             name = data.name;
             roll = data.roll;
@@ -56,14 +73,14 @@ loginBtn.addEventListener("click", async () => {
 
             startCamera();
 
-        } 
-        else {
+        }
+        else{
 
             alert("Login failed");
 
         }
 
-    } 
+    }
     catch(err){
 
         console.log(err);
@@ -75,43 +92,24 @@ loginBtn.addEventListener("click", async () => {
 
 
 // ===========================
-// STEP 2: START FRONT CAMERA
+// START FRONT CAMERA
 // ===========================
 function startCamera(){
 
     navigator.mediaDevices.getUserMedia({video:{facingMode:"user"}})
 
-    .then(stream => {
+    .then(stream=>{
 
         camera.srcObject = stream;
 
     })
 
-    .catch(err => {
+    .catch(err=>{
 
         console.log(err);
         alert("Camera access denied");
 
     });
-
-}
-
-
-// ===========================
-// CAPTURE IMAGE
-// ===========================
-function captureImage(){
-
-    const canvas = document.createElement("canvas");
-
-    canvas.width = camera.videoWidth;
-    canvas.height = camera.videoHeight;
-
-    const ctx = canvas.getContext("2d");
-
-    ctx.drawImage(camera, 0, 0);
-
-    return canvas.toDataURL("image/jpeg");
 
 }
 
@@ -123,18 +121,30 @@ captureBtn.addEventListener("click", verifyFace);
 
 async function verifyFace(){
 
-    const image = captureImage();
+    const detection = await faceapi
+        .detectSingleFace(camera,new faceapi.TinyFaceDetectorOptions())
+        .withFaceLandmarks()
+        .withFaceDescriptor();
 
-    try {
+    if(!detection){
 
-        const res = await fetch(`${BACKEND_URL}/verify_face`, {
+        alert("No face detected");
+        return;
 
-            method: "POST",
-            headers: {"Content-Type":"application/json"},
+    }
+
+    const descriptor = Array.from(detection.descriptor);
+
+    try{
+
+        const res = await fetch(`${BACKEND_URL}/verify_face`,{
+
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
             body: JSON.stringify({
 
                 username: username,
-                image: image
+                encoding: descriptor
 
             })
 
@@ -146,7 +156,7 @@ async function verifyFace(){
 
             faceVerified = true;
 
-            alert("Face verification successful! Valid for 10 seconds.");
+            alert("Face verified! Valid for 10 seconds.");
 
             startFaceTimer();
             startQRScan();
@@ -154,11 +164,11 @@ async function verifyFace(){
         }
         else{
 
-            alert("Face verification failed. Try again.");
+            alert("Face verification failed");
 
         }
 
-    } 
+    }
     catch(err){
 
         console.log(err);
@@ -170,27 +180,27 @@ async function verifyFace(){
 
 
 // ===========================
-// FACE VERIFICATION TIMER
+// FACE TIMER
 // ===========================
 function startFaceTimer(){
 
     let time = 10;
 
-    timerDisplay.innerText = "Timer: " + time + "s";
+    timerDisplay.innerText = "Timer: "+time+"s";
 
     faceTimer = setInterval(()=>{
 
         time--;
 
-        timerDisplay.innerText = "Timer: " + time + "s";
+        timerDisplay.innerText = "Timer: "+time+"s";
 
-        if(time <= 0){
+        if(time<=0){
 
             clearInterval(faceTimer);
 
-            faceVerified = false;
+            faceVerified=false;
 
-            fetch(`${BACKEND_URL}/reset_face_verification`, {
+            fetch(`${BACKEND_URL}/reset_face_verification`,{
 
                 method:"POST",
                 headers:{"Content-Type":"application/json"},
@@ -198,10 +208,10 @@ function startFaceTimer(){
 
             });
 
-            alert("Face verification expired. Please verify again.");
+            alert("Face verification expired");
 
-            qrSection.style.display = "none";
-            faceSection.style.display = "block";
+            qrSection.style.display="none";
+            faceSection.style.display="block";
 
         }
 
@@ -211,29 +221,29 @@ function startFaceTimer(){
 
 
 // ===========================
-// STEP 3: QR SCAN
+// QR SCAN
 // ===========================
 function startQRScan(){
 
-    faceSection.style.display = "none";
-    qrSection.style.display = "block";
+    faceSection.style.display="none";
+    qrSection.style.display="block";
 
     navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}})
 
-    .then(stream => {
+    .then(stream=>{
 
         qrCamera.srcObject = stream;
 
     })
 
-    .catch(err => {
+    .catch(err=>{
 
         console.log(err);
         alert("Back camera access denied");
 
     });
 
-    const scanInterval = setInterval(()=>{
+    const scanInterval=setInterval(()=>{
 
         const params = new URLSearchParams(window.location.search);
 
@@ -242,7 +252,7 @@ function startQRScan(){
 
         if(faceVerified && token){
 
-            markAttendance(session, token);
+            markAttendance(session,token);
             clearInterval(scanInterval);
 
         }
@@ -255,23 +265,23 @@ function startQRScan(){
 // ===========================
 // MARK ATTENDANCE
 // ===========================
-async function markAttendance(session, token){
+async function markAttendance(session,token){
 
-    try {
+    try{
 
-        const res = await fetch(`${BACKEND_URL}/mark_attendance`, {
+        const res = await fetch(`${BACKEND_URL}/mark_attendance`,{
 
             method:"POST",
             headers:{"Content-Type":"application/json"},
 
             body: JSON.stringify({
 
-                username: username,
-                name: name,
-                roll: roll,
-                division: division,
-                session: session,
-                token: token
+                username:username,
+                name:name,
+                roll:roll,
+                division:division,
+                session:session,
+                token:token
 
             })
 
@@ -279,41 +289,41 @@ async function markAttendance(session, token){
 
         const data = await res.json();
 
-        if(data.status === "present"){
+        if(data.status==="present"){
 
             alert("Attendance marked successfully!");
 
         }
-        else if(data.status === "face_verification_invalid"){
+        else if(data.status==="face_verification_invalid"){
 
-            alert("Face verification expired. Retry.");
+            alert("Face verification expired");
 
-            qrSection.style.display = "none";
-            faceSection.style.display = "block";
-
-        }
-        else if(data.status === "invalid_qr"){
-
-            alert("Invalid QR code.");
+            qrSection.style.display="none";
+            faceSection.style.display="block";
 
         }
-        else if(data.status === "qr_expired"){
+        else if(data.status==="invalid_qr"){
 
-            alert("QR expired.");
+            alert("Invalid QR code");
 
         }
-        else if(data.status === "already_marked"){
+        else if(data.status==="qr_expired"){
 
-            alert("Attendance already marked.");
+            alert("QR expired");
+
+        }
+        else if(data.status==="already_marked"){
+
+            alert("Attendance already marked");
 
         }
         else{
 
-            alert("Error marking attendance.");
+            alert("Error marking attendance");
 
         }
 
-    } 
+    }
     catch(err){
 
         console.log(err);
