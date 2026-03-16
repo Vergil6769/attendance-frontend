@@ -7,6 +7,7 @@ const BACKEND_URL = "https://attendance-backend-pa84.onrender.com";
 // TEACHER LOGIN
 // ===========================
 function teacherLogin() {
+
     const username = document.getElementById("username").value;
     const password = document.getElementById("password").value;
 
@@ -17,31 +18,42 @@ function teacherLogin() {
     })
     .then(res => res.json())
     .then(data => {
+
         if (data.status === "success") {
+
             localStorage.setItem("teacher", username);
             window.location = "teacher_dashboard.html";
+
         } else {
+
             alert("Invalid Username or Password");
+
         }
+
     })
     .catch(err => {
         console.log(err);
         alert("Server error");
     });
+
 }
+
 
 // ===========================
 // START ATTENDANCE SESSION
 // ===========================
 function startAttendance() {
+
     const division = document.getElementById("division").value;
     const lecture = document.getElementById("lecture").value;
     const teacher = localStorage.getItem("teacher");
 
     if (!teacher) {
+
         alert("Teacher not logged in");
         window.location = "index.html";
         return;
+
     }
 
     fetch(`${BACKEND_URL}/start_session`, {
@@ -51,47 +63,69 @@ function startAttendance() {
     })
     .then(res => res.json())
     .then(data => {
+
         if (data.status === "session_started") {
+
             document.getElementById("lecture_name").innerText =
                 "Subject: " + data.subject;
 
-            // Load first QR immediately
             loadQR();
 
-            // Refresh QR every 5 seconds
             window.qrInterval = setInterval(loadQR, 5000);
 
-        } else if (data.status === "no_lecture_today") {
-            alert("No lecture scheduled today");
-        } else if (data.status === "timetable_missing") {
-            alert("Timetable not found for division " + division);
         }
+        else if (data.status === "no_lecture_today") {
+
+            alert("No lecture scheduled today");
+
+        }
+        else if (data.status === "timetable_missing") {
+
+            alert("Timetable not found for division " + division);
+
+        }
+
     })
     .catch(err => {
+
         console.log(err);
         alert("Server connection error");
+
     });
+
 }
+
 
 // ===========================
 // LOAD QR (ROTATES EVERY 5 SEC)
 // ===========================
 function loadQR() {
+
     fetch(`${BACKEND_URL}/generate_qr?t=${Date.now()}`)
-        .then(res => res.json())
-        .then(data => {
-            const qr = document.getElementById("qr");
-            if (qr && data.token) {
-                qr.src = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" + data.token;
-            }
-        })
-        .catch(err => console.log(err));
+    .then(res => res.json())
+    .then(data => {
+
+        const qr = document.getElementById("qr");
+
+        if (qr && data.token) {
+
+            qr.src =
+            "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data="
+            + data.token;
+
+        }
+
+    })
+    .catch(err => console.log(err));
+
 }
+
 
 // ===========================
 // STOP ATTENDANCE
 // ===========================
 function stopAttendance() {
+
     fetch(`${BACKEND_URL}/stop_session`, { method: "POST" });
 
     const qr = document.getElementById("qr");
@@ -101,142 +135,184 @@ function stopAttendance() {
     if (lectureName) lectureName.innerText = "";
 
     if (window.qrInterval) clearInterval(window.qrInterval);
+
 }
 
+
 // ===========================
-// STUDENT LOGIN + FACE VERIFICATION + MARK ATTENDANCE
+// STUDENT LOGIN + FACE VERIFY
 // ===========================
 async function verifyAndMarkAttendance() {
+
     const username = document.getElementById("username").value;
     const password = document.getElementById("password").value;
 
-    // Get QR params from URL
-    const params = new URLSearchParams(window.location.search);
-    const session = params.get("session");
-    const token = params.get("token");
-
-    if (!token) { alert("Invalid QR Code"); return; }
-
-    // --- Step 1: Student Login ---
+    // STEP 1 LOGIN
     let loginRes = await fetch(`${BACKEND_URL}/student_login`, {
+
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({ username, password })
+
     });
+
     let loginData = await loginRes.json();
 
     if (loginData.status !== "success") {
+
         alert("Invalid Student ID or Password");
         return;
+
     }
 
-    // --- Step 2: Capture webcam image (front camera) ---
-    const imageBase64 = await captureWebcamImage(); // implement this function to get base64 from webcam
-    if (!imageBase64) {
-        alert("Could not capture image");
+
+    // STEP 2 CAPTURE IMAGE
+    let image = await captureWebcamImage();
+
+    if (!image) {
+
+        alert("Could not capture face");
         return;
+
     }
 
-    // --- Step 3: Face Verification ---
+
+    // STEP 3 FACE VERIFY
     let verifyRes = await fetch(`${BACKEND_URL}/verify_face`, {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ username, angle: "front", image: imageBase64 })
-    });
-    let verifyData = await verifyRes.json();
 
-    if (!verifyData.match) {
-        alert("Face verification failed. Try again.");
-        return;
-    }
-
-    // --- Step 4: Mark Attendance ---
-    let markRes = await fetch(`${BACKEND_URL}/mark_attendance`, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({
-            username: username,
-            name: loginData.name,
-            roll: loginData.roll,
-            division: loginData.division,
-            session: session,
-            token: token
-        })
-    });
-    let markData = await markRes.json();
 
-    if (markData.status === "present") alert("Attendance marked successfully");
-    else alert(markData.status || "Error marking attendance");
+            username: username,
+            image: image
+
+        })
+
+    });
+
+    let verifyData = await verifyRes.json();
+
+    if (!verifyData.match) {
+
+        alert("Face verification failed");
+        return;
+
+    }
+
+    alert("Face Verified Successfully");
+
 }
 
+
 // ===========================
-// LOAD ATTENDANCE
+// VIEW ATTENDANCE
 // ===========================
 function loadAttendance() {
+
     const division = document.getElementById("division_view").value;
 
     fetch(`${BACKEND_URL}/attendance_by_division?division=${division}`)
-        .then(res => res.json())
-        .then(data => {
-            const table = document.getElementById("attendance_table");
-            table.innerHTML = "";
+    .then(res => res.json())
+    .then(data => {
 
-            data.forEach(row => {
-                const tr = document.createElement("tr");
-                tr.innerHTML = `
-                    <td>${row.Name}</td>
-                    <td>${row.Roll}</td>
-                    <td>${row.Subject}</td>
-                    <td>${row.Lecture}</td>
-                    <td>${row.Date}</td>
-                    <td>${row.Time}</td>
-                `;
-                table.appendChild(tr);
-            });
-        })
-        .catch(err => console.log(err));
+        const table = document.getElementById("attendance_table");
+        table.innerHTML = "";
+
+        data.forEach(row => {
+
+            const tr = document.createElement("tr");
+
+            tr.innerHTML = `
+                <td>${row.Name}</td>
+                <td>${row.Roll}</td>
+                <td>${row.Subject}</td>
+                <td>${row.Lecture}</td>
+                <td>${row.Date}</td>
+                <td>${row.Time}</td>
+            `;
+
+            table.appendChild(tr);
+
+        });
+
+    })
+    .catch(err => console.log(err));
+
 }
+
 
 // ===========================
 // LOGOUT
 // ===========================
 function logout() {
+
     localStorage.removeItem("teacher");
     window.location = "index.html";
+
 }
 
+
 // ===========================
-// BLOCK DASHBOARD IF NOT LOGGED IN
+// BLOCK DASHBOARD
 // ===========================
 window.onload = function () {
+
     const teacher = localStorage.getItem("teacher");
 
     if (window.location.pathname.includes("teacher_dashboard.html") && !teacher) {
+
         alert("Please login first");
         window.location = "index.html";
+
     }
+
 };
 
+
 // ===========================
-// HELPER: CAPTURE WEBCAM IMAGE
+// CAMERA CAPTURE
 // ===========================
 function captureWebcamImage() {
-    return new Promise((resolve, reject) => {
-        const video = document.createElement("video");
-        navigator.mediaDevices.getUserMedia({ video: true })
-            .then(stream => {
-                video.srcObject = stream;
-                video.play();
 
-                setTimeout(() => {
-                    const canvas = document.createElement("canvas");
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
-                    stream.getTracks().forEach(track => track.stop());
-                    resolve(canvas.toDataURL("image/jpeg"));
-                }, 1500); // wait 1.5s to allow camera to load
-            })
-            .catch(err => reject(err));
+    return new Promise(async (resolve, reject) => {
+
+        try {
+
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+
+            const video = document.createElement("video");
+
+            video.srcObject = stream;
+            video.play();
+
+            setTimeout(() => {
+
+                const canvas = document.createElement("canvas");
+
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+
+                const ctx = canvas.getContext("2d");
+
+                ctx.drawImage(video, 0, 0);
+
+                stream.getTracks().forEach(track => track.stop());
+
+                resolve(canvas.toDataURL("image/jpeg"));
+
+            }, 1200);
+
+        }
+        catch(err) {
+
+            console.log(err);
+            alert("Camera permission denied");
+
+            resolve(null);
+
+        }
+
     });
+
 }
