@@ -76,7 +76,7 @@ function startAttendance() {
             loadQR();
 
             // rotate QR every 4 seconds
-            window.qrInterval = setInterval(loadQR, 4000);
+            window.qrInterval = setInterval(loadQR, 9000);
 
         }
         else if (data.status === "no_lecture_today") {
