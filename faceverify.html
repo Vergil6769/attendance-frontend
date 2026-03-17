@@ -1,40 +1,20 @@
 <!DOCTYPE html>
 <html>
-
 <head>
-  <title>Student Attendance</title>
-  <link rel="stylesheet" href="css/style.css">
-
-  <!-- Face API -->
-  <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/jsqr"></script>
-  <script defer src="js/face_capture.js"></script>
+    <title>Student Face Verify</title>
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
 </head>
-
 <body>
-  <h2>Student Attendance</h2>
+    <h2>Student Login + Face Verification</h2>
+    <input type="text" id="username" placeholder="Username" />
+    <input type="password" id="password" placeholder="Password" />
+    <button id="loginBtn">Login</button>
 
-  <!-- LOGIN -->
-  <div id="login-section">
-    <input id="username" placeholder="Username">
-    <input id="password" type="password" placeholder="Password">
-    <button id="login-btn">Login</button>
-  </div>
+    <div id="cameraDiv" style="display:none;">
+        <video id="video" width="320" height="240" autoplay muted></video>
+        <button id="verifyFaceBtn">Verify Face</button>
+    </div>
 
-  <!-- FACE VERIFY -->
-  <div id="face-section" style="display:none; position: relative;">
-    <h3>Face Verification</h3>
-    <video id="camera" width="400" height="300" autoplay muted></video>
-    <canvas id="face-canvas" width="400" height="300" style="position:absolute; top:0; left:0;"></canvas>
-    <br>
-    <button id="capture-btn">Verify Face</button>
-    <p id="timer"></p>
-  </div>
-
-  <!-- QR SCAN -->
-  <div id="qr-section" style="display:none;">
-    <h3>Scan QR Code</h3>
-    <video id="qr-camera" width="400" height="300" autoplay muted></video>
-  </div>
+    <script src="face_capture.js"></script>
 </body>
 </html>
