@@ -121,8 +121,8 @@ function startAttendance() {
             // Load first QR immediately
             loadQR();
 
-            // Refresh QR every 10 seconds
-            window.qrInterval = setInterval(loadQR, 10000);
+            // Refresh QR every 7 seconds
+            window.qrInterval = setInterval(loadQR, 7000);
 
         } else if (data.status === "no_lecture_today") {
             alert("No lecture scheduled today");
