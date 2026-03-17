@@ -1,16 +1,75 @@
-// ===========================
-// CONFIG
-// ===========================
+// Replace with your deployed backend URL
 const BACKEND_URL = "https://attendance-backend-pa84.onrender.com";
 
+// ===========================
+// STUDENT LOGIN + MARK ATTENDANCE
+// ===========================
+function verifyStudent() {
+
+    let username = document.getElementById("username").value;
+    let password = document.getElementById("password").value;
+
+    // Get session + token from QR link
+    let params = new URLSearchParams(window.location.search);
+    let session = params.get("session");
+    let token = params.get("token");
+
+    if (!token) {
+        alert("Invalid QR Code");
+        return;
+    }
+
+    fetch(`${BACKEND_URL}/student_login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === "success") {
+
+            fetch(`${BACKEND_URL}/mark_attendance`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: data.name,
+                    roll: data.roll,
+                    division: data.division,
+                    session: session,
+                    token: token
+                })
+            })
+            .then(res => res.json())
+            .then(result => {
+                if (result.status === "present")
+                    alert("Attendance Marked Successfully");
+                else if (result.status === "already_marked")
+                    alert("Attendance Already Marked");
+                else if (result.status === "qr_expired")
+                    alert("QR Code Expired. Please scan again.");
+                else if (result.status === "invalid_qr")
+                    alert("Invalid QR Code. Please scan again.");
+                else
+                    alert(result.message || "Error marking attendance");
+            });
+
+        } else {
+            alert("Invalid Student ID or Password");
+        }
+    })
+    .catch(err => {
+        console.log(err);
+        alert("Server error");
+    });
+}
 
 // ===========================
 // TEACHER LOGIN
 // ===========================
 function teacherLogin() {
 
-    const username = document.getElementById("username").value;
-    const password = document.getElementById("password").value;
+    let username = document.getElementById("username").value;
+    let password = document.getElementById("password").value;
 
     fetch(`${BACKEND_URL}/teacher_login`, {
         method: "POST",
@@ -19,45 +78,32 @@ function teacherLogin() {
     })
     .then(res => res.json())
     .then(data => {
-
         if (data.status === "success") {
-
             localStorage.setItem("teacher", username);
             window.location = "teacher_dashboard.html";
-
-        } 
-        else {
-
+        } else {
             alert("Invalid Username or Password");
-
         }
-
     })
     .catch(err => {
-
         console.log(err);
         alert("Server error");
-
     });
-
 }
-
 
 // ===========================
 // START ATTENDANCE SESSION
 // ===========================
 function startAttendance() {
 
-    const division = document.getElementById("division").value;
-    const lecture = document.getElementById("lecture").value;
-    const teacher = localStorage.getItem("teacher");
+    let division = document.getElementById("division").value;
+    let lecture = document.getElementById("lecture").value;
+    let teacher = localStorage.getItem("teacher");
 
     if (!teacher) {
-
         alert("Teacher not logged in");
         window.location = "index.html";
         return;
-
     }
 
     fetch(`${BACKEND_URL}/start_session`, {
@@ -67,69 +113,41 @@ function startAttendance() {
     })
     .then(res => res.json())
     .then(data => {
-
         if (data.status === "session_started") {
 
             document.getElementById("lecture_name").innerText =
                 "Subject: " + data.subject;
 
+            // Load first QR immediately
             loadQR();
 
-            // rotate QR every 9 seconds
-            window.qrInterval = setInterval(loadQR, 9000);
+            // Refresh QR every 10 seconds
+            window.qrInterval = setInterval(loadQR, 10000);
 
-        }
-        else if (data.status === "no_lecture_today") {
-
+        } else if (data.status === "no_lecture_today") {
             alert("No lecture scheduled today");
-
-        }
-        else if (data.status === "timetable_missing") {
-
+        } else if (data.status === "timetable_missing") {
             alert("Timetable not found for division " + division);
-
         }
-
     })
     .catch(err => {
-
         console.log(err);
         alert("Server connection error");
-
     });
-
 }
 
-
 // ===========================
-// LOAD QR (ROTATES)
+// LOAD QR (ROTATES EVERY 10 SEC)
 // ===========================
 function loadQR() {
 
-    fetch(`${BACKEND_URL}/generate_qr?t=${Date.now()}`)
-    .then(res => res.json())
-    .then(data => {
+    let qr = document.getElementById("qr");
 
-        const qr = document.getElementById("qr");
-
-        if (qr && data.token) {
-
-            const studentURL =
-                "https://vergil6769.github.io/attendance-frontend/faceverify.html"
-                + "?session=" + data.session
-                + "&token=" + data.token;
-
-            qr.src =
-                "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data="
-                + encodeURIComponent(studentURL);
-
-        }
-
-    })
-    .catch(err => console.log(err));
-
+    if (qr) {
+        // Use Date.now() to prevent caching and force reload
+        qr.src = `${BACKEND_URL}/generate_qr?t=${Date.now()}`;
+    }
 }
-
 
 // ===========================
 // STOP ATTENDANCE
@@ -138,34 +156,30 @@ function stopAttendance() {
 
     fetch(`${BACKEND_URL}/stop_session`, { method: "POST" });
 
-    const qr = document.getElementById("qr");
-    if (qr) qr.src = "";
+    document.getElementById("qr").src = "";
+    document.getElementById("lecture_name").innerText = "";
 
-    const lectureName = document.getElementById("lecture_name");
-    if (lectureName) lectureName.innerText = "";
-
-    if (window.qrInterval) clearInterval(window.qrInterval);
-
+    if (window.qrInterval) {
+        clearInterval(window.qrInterval);
+    }
 }
 
-
 // ===========================
-// VIEW ATTENDANCE
+// LOAD ATTENDANCE
 // ===========================
 function loadAttendance() {
 
-    const division = document.getElementById("division_view").value;
+    let division = document.getElementById("division_view").value;
 
     fetch(`${BACKEND_URL}/attendance_by_division?division=${division}`)
     .then(res => res.json())
     .then(data => {
 
-        const table = document.getElementById("attendance_table");
+        let table = document.getElementById("attendance_table");
         table.innerHTML = "";
 
         data.forEach(row => {
-
-            const tr = document.createElement("tr");
+            let tr = document.createElement("tr");
 
             tr.innerHTML = `
                 <td>${row.Name}</td>
@@ -177,38 +191,26 @@ function loadAttendance() {
             `;
 
             table.appendChild(tr);
-
         });
-
-    })
-    .catch(err => console.log(err));
-
+    });
 }
-
 
 // ===========================
 // LOGOUT
 // ===========================
 function logout() {
-
     localStorage.removeItem("teacher");
     window.location = "index.html";
-
 }
 
-
 // ===========================
-// BLOCK DASHBOARD ACCESS
+// BLOCK DASHBOARD IF NOT LOGGED IN
 // ===========================
 window.onload = function () {
-
-    const teacher = localStorage.getItem("teacher");
+    let teacher = localStorage.getItem("teacher");
 
     if (window.location.pathname.includes("teacher_dashboard.html") && !teacher) {
-
         alert("Please login first");
         window.location = "index.html";
-
     }
-
 };
