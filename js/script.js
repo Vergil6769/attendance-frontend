@@ -121,7 +121,7 @@ function startAttendance() {
             // Load first QR immediately
             loadQR();
 
-            // Refresh QR every 7 seconds
+            // Refresh QR every  seconds
             window.qrInterval = setInterval(loadQR, 7000);
 
         } else if (data.status === "no_lecture_today") {
@@ -185,7 +185,6 @@ function loadAttendance() {
                 <td>${row.Name}</td>
                 <td>${row.Roll}</td>
                 <td>${row.Subject}</td>
-                <td>${row.Lecture}</td>
                 <td>${row.Date}</td>
                 <td>${row.Time}</td>
             `;
