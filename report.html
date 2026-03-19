@@ -55,12 +55,13 @@ text-align:center;
 
 <script>
 
+const BACKEND_URL = "https://attendance-backend-pa84.onrender.com"
+
 async function loadReport(){
 
-let res=await fetch("http://127.0.0.1:5000/attendance_data")
-
+try{
+let res=await fetch(`${BACKEND_URL}/attendance_data`)
 let data=await res.json()
-
 let table=document.getElementById("table")
 
 data.forEach(r=>{
@@ -71,9 +72,13 @@ row.insertCell(0).innerText=r.Name
 row.insertCell(1).innerText=r.Roll
 row.insertCell(2).innerText=r.Division
 row.insertCell(3).innerText=r.Lecture
-row.insertCell(4).innerText=r.Time
+row.insertCell(4).innerText=r.Time || ""
 
 })
+}catch(error){
+console.log(error)
+alert("Could not load attendance report")
+}
 
 }
 

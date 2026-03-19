@@ -4,23 +4,35 @@
 <head>
 <title>Student Verification</title>
 <link rel="stylesheet" href="css/style.css">
-<script src="js/script.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<script defer src="js/script.js"></script>
 </head>
 
 <body>
 
-<div class="card">
+<div class="card card-wide">
 
 <h2>Student Login</h2>
+<p class="helper-text">Log in, capture a live selfie, and complete face verification before attendance is marked.</p>
 
 <input id="username" placeholder="Student ID">
 <input id="password" type="password" placeholder="Password">
 
-<button onclick="verifyStudent()">Submit</button>
-
+<div class="camera-shell">
+<video id="face_video" autoplay muted playsinline></video>
+<canvas id="face_canvas" class="hidden"></canvas>
 </div>
 
-<script src="js/script.js"></script>
+<p id="face_status" class="status-text">Loading face verification models...</p>
+
+<div class="button-row">
+<button id="open_camera_btn" type="button" onclick="startFaceCamera()">Open Camera</button>
+<button id="verify_btn" type="button" onclick="verifyStudent()">Verify & Mark Attendance</button>
+</div>
+
+<button id="enroll_btn" type="button" class="secondary-btn" onclick="enrollStudentFace()">Enroll Face</button>
+
+</div>
 
 </body>
 </html>
